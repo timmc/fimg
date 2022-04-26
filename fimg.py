@@ -5,22 +5,28 @@ import numpy.fft as fft
 import skimage
 
 
-def main():
+def load_image_grayscale():
     # TODO arbitrary source image
     # TODO use `from skimage.color import rgb2gray`
     image = skimage.data.camera()
     # Ensure intensity is represented as 0-255 int
-    image = skimage.util.img_as_ubyte(image)
-
-    
-    fourier = fft.fft2(image)
-    image_i = fft.irfft2(fourier, image.shape)
+    return skimage.util.img_as_ubyte(image)
 
 
+def save_image_grayscale(image_data):
     # Convert from floats back to unsigned bytes for skimage
-    out_image_data = numpy.uint8(image_i)
+    out_image_data = numpy.uint8(image_data)
     # TODO remove hardcoded path (from here and .gitignore)
     skimage.io.imsave('out.png', out_image_data)
+
+
+def main():
+    orig = load_image_grayscale()
+
+    fourier = fft.fft2(orig)
+    image_i = fft.irfft2(fourier, orig.shape)
+
+    save_image_grayscale(image_i)
 
 
 if __name__ == '__main__':
