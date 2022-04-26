@@ -1,0 +1,9 @@
+# Redo's DB
+/.redo/
+
+# Python compilation artifacts
+*.pyc
+__pycache__
+
+# Output image path
+/out.png
