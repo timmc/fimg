@@ -20,10 +20,15 @@ def save_image_grayscale(image_data):
     skimage.io.imsave('out.png', out_image_data)
 
 
-def main():
+def main(roll_x, roll_y):
+    roll_x = int(roll_x)
+    roll_y = int(roll_y)
+
     orig = load_image_grayscale()
 
     fourier = fft.fft2(orig)
+    fourier = numpy.roll(fourier, roll_y, (0,))
+    fourier = numpy.roll(fourier, roll_x, (1,))
     image_i = fft.irfft2(fourier, orig.shape)
 
     save_image_grayscale(image_i)
