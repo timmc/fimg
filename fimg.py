@@ -138,16 +138,16 @@ def roll_phase(phase, x, y):
     return roll_xy(phase, int(x), int(y))
 
 
-@cli(name='const_phase')
-@xform_phase
-def const_phase(phase, frac):
-    return phase * 0 + float(frac) * 2 * math.pi
-
-
 @cli(name='const_amp')
 @xform_amp
 def const_amp(amp, val):
     return amp * 0 + float(val)
+
+
+@cli(name='const_phase')
+@xform_phase
+def const_phase(phase, frac):
+    return phase * 0 + float(frac) * 2 * math.pi
 
 
 def speckle(val):
@@ -169,7 +169,7 @@ def speckle_phase(phase):
 commands = [
     roll_freq, roll_amp, roll_phase,
     rotate_phase,
-    const_phase, const_amp,
+    const_amp, const_phase,
     speckle_amp, speckle_phase,
     plot_amp,
 ]
