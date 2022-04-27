@@ -23,11 +23,10 @@ def load_image_grayscale(src_path):
     return skimage.util.img_as_ubyte(image)
 
 
-def save_image_grayscale(image_data):
+def save_image_grayscale(dest_path, image_data):
     # Convert from floats back to unsigned bytes for skimage
     out_image_data = numpy.uint8(image_data)
-    # TODO remove hardcoded path (from here and .gitignore)
-    skimage.io.imsave('out.png', out_image_data)
+    skimage.io.imsave(dest_path, out_image_data)
 
 
 def roll(image, x, y):
@@ -61,7 +60,7 @@ def rotate_phase(phase, frac):
     return (phase + math.pi + (full_circle * frac)) % full_circle - math.pi
 
 
-def main(src_path, phase_const_str):
+def main(src_path, dest_path, phase_const_str):
     orig_image = load_image_grayscale(src_path)
     orig_freq = spatial_to_freq(orig_image)
     amplitude, phase = freq_to_amp_phase(orig_freq)
@@ -69,7 +68,7 @@ def main(src_path, phase_const_str):
     phase = phase * 0 + float(phase_const_str) * 2 * math.pi
 
     recomp_freq = amp_phase_to_freq(amplitude, phase)
-    save_image_grayscale(freq_to_spatial(recomp_freq, orig_image.shape))
+    save_image_grayscale(dest_path, freq_to_spatial(recomp_freq, orig_image.shape))
 
 
 if __name__ == '__main__':

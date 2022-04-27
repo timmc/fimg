@@ -4,7 +4,3 @@
 # Python compilation artifacts
 *.pyc
 __pycache__
-
-# Output image paths
-/out.png
-/out/
