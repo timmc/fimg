@@ -1,6 +1,7 @@
 from functools import wraps
 from inspect import signature
 import math
+from random import random
 import sys
 
 import numpy
@@ -149,10 +150,27 @@ def const_amp(amp, val):
     return amp * 0 + float(val)
 
 
+def speckle(val):
+    return val * random()
+
+
+@cli(name='speckle_amp')
+@xform_amp
+def speckle_amp(amp):
+    return numpy.vectorize(speckle)(amp)
+
+
+@cli(name='speckle_phase')
+@xform_phase
+def speckle_phase(phase):
+    return numpy.vectorize(speckle)(phase)
+
+
 commands = [
     roll_freq, roll_amp, roll_phase,
     rotate_phase,
     const_phase, const_amp,
+    speckle_amp, speckle_phase,
     plot_amp,
 ]
 
