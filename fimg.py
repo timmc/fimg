@@ -1,3 +1,5 @@
+from functools import wraps
+from inspect import signature
 import math
 import sys
 
@@ -50,25 +52,52 @@ def amp_phase_to_freq(amp, phase):
     return real + imag * complex(0, 1)
 
 
-def cli(*, name, xform, args):
+def cli(*, name):
     def do_wrap(func):
         func.__cli__ = {
             'name': name,
-            'xform': xform,
-            'args': args,
+            'arg_count': len(signature(func).parameters) - 1,
         }
         return func
     return do_wrap
 
 
-@cli(name='phase_rotate_angle', xform='phase', args=1)
+def xform_freq(cmd):
+    @wraps(cmd)
+    def wrapped(src_image, *cmd_args):
+        src_freq = spatial_to_freq(src_image)
+        out_freq = cmd(src_freq, *cmd_args)
+        return freq_to_spatial(out_freq, src_image.shape)
+    return wrapped
+
+
+def xform_amp(cmd):
+    @wraps(cmd)
+    @xform_freq
+    def wrapped(src_freq, *cmd_args):
+        amp, phase = freq_to_amp_phase(src_freq)
+        return amp_phase_to_freq(cmd(amp, *cmd_args), phase)
+    return wrapped
+
+
+def xform_phase(cmd):
+    @wraps(cmd)
+    @xform_freq
+    def wrapped(src_freq, *cmd_args):
+        amp, phase = freq_to_amp_phase(src_freq)
+        return amp_phase_to_freq(amp, cmd(phase, *cmd_args))
+    return wrapped
+
+
+@cli(name='phase_rotate_angle')
+@xform_phase
 def rotate_phase(phase, frac_str):
     frac = float(frac_str)
     full_circle = 2 * math.pi
     return (phase + math.pi + (full_circle * frac)) % full_circle - math.pi
 
 
-@cli(name='plot_amp', xform='spatial', args=0)
+@cli(name='plot_amp')
 def plot_amp(image):
     """Render amplitude as spatial image data."""
     freq = spatial_to_freq(image)
@@ -90,27 +119,32 @@ def roll_xy(arr, x, y):
     return arr
 
 
-@cli(name='roll_freq', xform='freq', args=2)
+@cli(name='roll_freq')
+@xform_freq
 def roll_freq(freq, x, y):
     return roll_xy(freq, int(x), int(y))
 
 
-@cli(name='roll_amp', xform='amp', args=2)
+@cli(name='roll_amp')
+@xform_amp
 def roll_amp(amp, x, y):
     return roll_xy(amp, int(x), int(y))
 
 
-@cli(name='roll_phase', xform='phase', args=2)
+@cli(name='roll_phase')
+@xform_phase
 def roll_phase(phase, x, y):
     return roll_xy(phase, int(x), int(y))
 
 
-@cli(name='const_phase', xform='phase', args=1)
+@cli(name='const_phase')
+@xform_phase
 def const_phase(phase, frac):
     return phase * 0 + float(frac) * 2 * math.pi
 
 
-@cli(name='const_amp', xform='amp', args=1)
+@cli(name='const_amp')
+@xform_amp
 def const_amp(amp, val):
     return amp * 0 + float(val)
 
@@ -134,41 +168,17 @@ def main(src_path, dest_path, cmd, *cmd_args):
         cmd_f = next(f for f in commands if f.__cli__['name'] == cmd)
     except StopIteration:
         print(f"Unknown command: {cmd}")
+        print()
         print_available_commands()
         sys.exit(1)
 
-    if cmd_f.__cli__['args'] != len(cmd_args):
+    if cmd_f.__cli__['arg_count'] != len(cmd_args):
         print("Wrong number of arguments for command; "
-              f"expected {cmd_f.__cli__['args']}, got {len(cmd_args)}")
+              f"expected {cmd_f.__cli__['arg_count']}, got {len(cmd_args)}")
         sys.exit(1)
 
     src_image = load_image_grayscale(src_path)
-
-    xf = cmd_f.__cli__['xform']
-    if xf == 'spatial':
-        out_image = cmd_f(src_image, *cmd_args)
-    elif xf == 'freq':
-        src_freq = spatial_to_freq(src_image)
-        out_image = freq_to_spatial(
-            cmd_f(src_freq, *cmd_args),
-            src_image.shape
-        )
-    elif xf == 'phase':
-        src_freq = spatial_to_freq(src_image)
-        amp, phase = freq_to_amp_phase(src_freq)
-        out_image = freq_to_spatial(
-            amp_phase_to_freq(amp, cmd_f(phase, *cmd_args)),
-            src_image.shape
-        )
-    elif xf == 'amp':
-        src_freq = spatial_to_freq(src_image)
-        amp, phase = freq_to_amp_phase(src_freq)
-        out_image = freq_to_spatial(
-            amp_phase_to_freq(cmd_f(amp, *cmd_args), phase),
-            src_image.shape
-        )
-    else:
-        raise Exception(f"Command {cmd} had unknown transform '{xf}'")
+    out_image = cmd_f(src_image, *cmd_args)
 
     save_image_grayscale(dest_path, out_image)
 
@@ -178,4 +188,5 @@ if __name__ == '__main__':
         main(*sys.argv[1:])
     else:
         print("Expected arguments: <in-path> <out-path> <command> [...]")
+        print()
         print_available_commands()
