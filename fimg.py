@@ -110,8 +110,20 @@ def plot_amp(image):
     amp = numpy.log2(amp)
     lo = numpy.min(amp)
     hi = numpy.max(amp)
-    out = (amp - lo) / (hi - lo) * 255
-    return out
+    return (amp - lo) / (hi - lo) * 255
+
+
+@cli(name='plot_phase')
+def plot_phase(image):
+    """Render phase as spatial image data."""
+    freq = spatial_to_freq(image)
+    _amp, phase = freq_to_amp_phase(freq)
+
+    # Roll by 1/2 along each axis to bring the low frequencies to the center
+    phase = fft.fftshift(phase)
+    # Phase is in radians, so just bring it to range and rescale it.
+    phase = phase % (2 * math.pi)
+    return phase / (2 * math.pi) * 255
 
 
 def roll_xy(arr, x, y):
@@ -171,7 +183,7 @@ commands = [
     rotate_phase,
     const_amp, const_phase,
     speckle_amp, speckle_phase,
-    plot_amp,
+    plot_amp, plot_phase,
 ]
 
 
