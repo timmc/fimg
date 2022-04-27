@@ -64,18 +64,18 @@ def cli(*, name):
 
 def xform_freq(cmd):
     @wraps(cmd)
-    def wrapped(src_image, *cmd_args):
-        src_freq = spatial_to_freq(src_image)
+    def wrapped(image, *cmd_args):
+        src_freq = spatial_to_freq(image)
         out_freq = cmd(src_freq, *cmd_args)
-        return freq_to_spatial(out_freq, src_image.shape)
+        return freq_to_spatial(out_freq, image.shape)
     return wrapped
 
 
 def xform_amp(cmd):
     @wraps(cmd)
     @xform_freq
-    def wrapped(src_freq, *cmd_args):
-        amp, phase = freq_to_amp_phase(src_freq)
+    def wrapped(freq, *cmd_args):
+        amp, phase = freq_to_amp_phase(freq)
         return amp_phase_to_freq(cmd(amp, *cmd_args), phase)
     return wrapped
 
@@ -83,8 +83,8 @@ def xform_amp(cmd):
 def xform_phase(cmd):
     @wraps(cmd)
     @xform_freq
-    def wrapped(src_freq, *cmd_args):
-        amp, phase = freq_to_amp_phase(src_freq)
+    def wrapped(freq, *cmd_args):
+        amp, phase = freq_to_amp_phase(freq)
         return amp_phase_to_freq(amp, cmd(phase, *cmd_args))
     return wrapped
 
