@@ -1,3 +1,4 @@
+import math
 import sys
 
 import numpy
@@ -46,13 +47,18 @@ def amp_phase_to_freq(amplitude, phase):
     return real + imag * complex(0, 1)
 
 
-def main(roll_x, roll_y):
+def rotate_phase(phase, frac):
+    full_circle = 2 * math.pi
+    return (phase + math.pi + (full_circle * frac)) % full_circle - math.pi
+
+def main():
     orig_image = load_image_grayscale()
     orig_freq = spatial_to_freq(orig_image)
     amplitude, phase = freq_to_amp_phase(orig_freq)
 
+    phase = rotate_phase(phase, 0.1)
 #    amplitude = roll(amplitude, int(roll_x), int(roll_y))
-    phase = roll(phase, int(roll_x), int(roll_y))
+#    phase = roll(phase, int(roll_x), int(roll_y))
 
     recomp_freq = amp_phase_to_freq(amplitude, phase)
     save_image_grayscale(freq_to_spatial(recomp_freq, orig_image.shape))
