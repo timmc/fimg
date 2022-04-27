@@ -14,7 +14,6 @@ Setup:
     2. Install the rest of the dependencies: `pip-sync requirements/dev.lst`
 
 To use the script, make sure the virtualenv is active (as above) and
-run `python -m fimg <in-path> <out-path> <etc...>`.
+run `python -m fimg <in-path> <out-path> <cmd> [...]`.
 
-...but you'll probably have to modify the script to do what you want!
-It doesn't have a full CLI.
+For usage information, just run `python -m fimg` without additional arguments.
