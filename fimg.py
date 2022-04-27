@@ -19,6 +19,7 @@ def load_image_grayscale(src_path):
             image = skimage.color.rgb2gray(image)
         else:
             raise Exception(f"Unknown image shape: {image.shape}")
+
     # Ensures intensity is represented as 0-255 int and not as float or whatever
     return skimage.util.img_as_ubyte(image)
 
@@ -60,15 +61,27 @@ def rotate_phase(phase, frac):
     return (phase + math.pi + (full_circle * frac)) % full_circle - math.pi
 
 
-def main(src_path, dest_path, phase_const_str):
+def plot_amplitude(amplitude):
+    """Render amplitude as spatial image data."""
+    # Roll by 1/2 along each axis to bring the low frequencies to the center
+    amplitude = fft.fftshift(amplitude)
+    # There's a huge range of variation in amplitude, so use a log transform
+    amplitude = numpy.log2(amplitude)
+    lo = numpy.min(amplitude)
+    hi = numpy.max(amplitude)
+    out = (amplitude - lo) / (hi - lo) * 255
+    return out
+
+
+def main(src_path, dest_path):
     orig_image = load_image_grayscale(src_path)
     orig_freq = spatial_to_freq(orig_image)
     amplitude, phase = freq_to_amp_phase(orig_freq)
 
-    phase = phase * 0 + float(phase_const_str) * 2 * math.pi
+    save_image_grayscale(dest_path, plot_amplitude(amplitude))
 
-    recomp_freq = amp_phase_to_freq(amplitude, phase)
-    save_image_grayscale(dest_path, freq_to_spatial(recomp_freq, orig_image.shape))
+    # recomp_freq = amp_phase_to_freq(amplitude, phase)
+    # save_image_grayscale(dest_path, freq_to_spatial(recomp_freq, orig_image.shape))
 
 
 if __name__ == '__main__':
