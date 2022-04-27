@@ -220,3 +220,5 @@ if __name__ == '__main__':
         print("Expected arguments: <in-path> <out-path> <command> [...]")
         print()
         print_available_commands()
+        if len(sys.argv) > 1:
+            sys.exit(1)
