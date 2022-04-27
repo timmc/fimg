@@ -38,8 +38,12 @@ def amp_phase_to_freq(amp, phase):
 #==========#
 
 @click.group()
-def cli():
-    pass
+@click.argument('src_path', type=click.Path(exists=True))
+@click.argument('dest_path', type=click.Path())
+@click.pass_context
+def cli(ctx, src_path, dest_path):
+    ctx.obj['src_path'] = src_path
+    ctx.obj['dest_path'] = dest_path
 
 # A whole bunch of awful, nested decorators that act as transformation
 # lenses so that commands can just focus on the aspect of the data
@@ -50,12 +54,14 @@ def xform_image(xfunc):
     Wraps a function that handles single-channel image spatial data.
 
     Outermost transform decorator that handles image loading and saving.
-    This one even adds its own Click arguments.
+    This one asks for the Click context to get the src/dest paths.
     """
     @wraps(xfunc)
-    @click.argument('src_path', type=click.Path(exists=True))
-    @click.argument('dest_path', type=click.Path())
-    def wrapped(src_path, dest_path, *cmd_args, **cmd_kwargs):
+    @click.pass_context
+    def wrapped(ctx, *cmd_args, **cmd_kwargs):
+        src_path = ctx.obj['src_path']
+        dest_path = ctx.obj['dest_path']
+
         src_image = skimage.io.imread(src_path)
         # Ensures intensity is represented as 0-255 int and not as float or whatever
         src_image = skimage.util.img_as_ubyte(src_image)
@@ -228,4 +234,4 @@ def speckle_phase(phase):
 #=============#
 
 if __name__ == '__main__':
-    cli()
+    cli(obj={})
