@@ -14,6 +14,7 @@ Setup:
     2. Install the rest of the dependencies: `pip-sync requirements/dev.lst`
 
 To use the script, make sure the virtualenv is active (as above) and
-run `python -m fimg samples/silica-gel-gray.png out.png ...` where the
-`...` is... some command. You may need to modify the script itself to
-get the command you want. Sorry. This isn't imagemagick.
+run `python -m fimg <in-path> <out-path> <etc...>`.
+
+...but you'll probably have to modify the script to do what you want!
+It doesn't have a full CLI.
