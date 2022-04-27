@@ -6,11 +6,20 @@ import numpy.fft as fft
 import skimage
 
 
-def load_image_grayscale():
-    # TODO arbitrary source image
-    # TODO use `from skimage.color import rgb2gray`
-    image = skimage.data.camera()
-    # Ensure intensity is represented as 0-255 int
+def load_image_grayscale(src_path):
+    image = skimage.io.imread(src_path)
+    if len(image.shape) > 2:
+        # A third dimension means more than one channel, so how many
+        # channels did we get?
+        if image.shape[2] == 3:
+            image = skimage.color.rgb2gray(image)
+        elif image.shape[2] == 4:
+            # Flatten with black background, first
+            image = skimage.color.rgba2rgb(image, background=(0, 0, 0))
+            image = skimage.color.rgb2gray(image)
+        else:
+            raise Exception(f"Unknown image shape: {image.shape}")
+    # Ensures intensity is represented as 0-255 int and not as float or whatever
     return skimage.util.img_as_ubyte(image)
 
 
@@ -52,12 +61,12 @@ def rotate_phase(phase, frac):
     return (phase + math.pi + (full_circle * frac)) % full_circle - math.pi
 
 
-def main(phase_const):
-    orig_image = load_image_grayscale()
+def main(src_path, phase_const_str):
+    orig_image = load_image_grayscale(src_path)
     orig_freq = spatial_to_freq(orig_image)
     amplitude, phase = freq_to_amp_phase(orig_freq)
 
-    phase = phase * 0 + float(phase_const)
+    phase = phase * 0 + float(phase_const_str) * 2 * math.pi
 
     recomp_freq = amp_phase_to_freq(amplitude, phase)
     save_image_grayscale(freq_to_spatial(recomp_freq, orig_image.shape))
