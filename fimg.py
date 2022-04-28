@@ -57,23 +57,28 @@ def xform_image(xfunc):
     @click.argument('dest_path', type=click.Path())
     def wrapped(src_path, dest_path, *cmd_args, **cmd_kwargs):
         src_image = skimage.io.imread(src_path)
-        if len(src_image.shape) > 2:
-            # A third dimension means more than one channel, so how many
-            # channels did we get?
-            if src_image.shape[2] == 3:
-                src_image = skimage.color.rgb2gray(src_image)
-            elif src_image.shape[2] == 4:
-                # Flatten with black background, first
-                src_image = skimage.color.rgba2rgb(src_image, background=(0, 0, 0))
-                src_image = skimage.color.rgb2gray(src_image)
-            else:
-                raise Exception(f"Unknown image shape: {src_image.shape}")
-
         # Ensures intensity is represented as 0-255 int and not as float or whatever
         src_image = skimage.util.img_as_ubyte(src_image)
 
-        out_image = xfunc(src_image, *cmd_args, **cmd_kwargs)
+        if len(src_image.shape) == 2:
+            # If it's a single-channel image, it comes in with only
+            # two dimensions.
+            src_channels = src_image[numpy.newaxis, :, :]
+        elif len(src_image.shape) == 3:
+            # Multi-channel images have the channels as a tail
+            # dimension; bring it up front so we can iterate over the
+            # channels.
+            src_channels = src_image.transpose((2, 0, 1))
+        else:
+            raise Exception(f"Unexpected image shape: {src_image.shape}")
 
+        out_channels = numpy.array([
+            xfunc(channel, *cmd_args, **cmd_kwargs)
+            for channel in src_channels
+        ])
+
+        # Put the channel dimension back at the end
+        out_image = out_channels.transpose((1, 2, 0))
         # Convert from floats back to unsigned bytes for skimage
         out_image = numpy.uint8(out_image)
         skimage.io.imsave(dest_path, out_image)
