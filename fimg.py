@@ -5,8 +5,7 @@ from random import random
 import sys
 
 import click
-import numpy
-import numpy.fft as fft
+import numpy as np
 import skimage
 
 #===========#
@@ -15,22 +14,22 @@ import skimage
 
 
 def spatial_to_freq(spatial):
-    return fft.fft2(spatial)
+    return np.fft.fft2(spatial)
 
 
 def freq_to_spatial(freq, shape):
-    return fft.irfft2(freq, shape)
+    return np.fft.irfft2(freq, shape)
 
 
 def freq_to_amp_phase(freq):
     amp = abs(freq)
-    phase = numpy.angle(freq)
+    phase = np.angle(freq)
     return amp, phase
 
 
 def amp_phase_to_freq(amp, phase):
-    real = numpy.cos(phase) * amp
-    imag = numpy.sin(phase) * amp
+    real = np.cos(phase) * amp
+    imag = np.sin(phase) * amp
     return real + imag * complex(0, 1)
 
 #==========#
@@ -69,7 +68,7 @@ def xform_image(xfunc):
         if len(src_image.shape) == 2:
             # If it's a single-channel image, it comes in with only
             # two dimensions.
-            src_channels = src_image[numpy.newaxis, :, :]
+            src_channels = src_image[np.newaxis, :, :]
         elif len(src_image.shape) == 3:
             # Multi-channel images have the channels as a tail
             # dimension; bring it up front so we can iterate over the
@@ -78,7 +77,7 @@ def xform_image(xfunc):
         else:
             raise Exception(f"Unexpected image shape: {src_image.shape}")
 
-        out_channels = numpy.array([
+        out_channels = np.array([
             xfunc(channel, *cmd_args, **cmd_kwargs)
             for channel in src_channels
         ])
@@ -86,7 +85,7 @@ def xform_image(xfunc):
         # Put the channel dimension back at the end
         out_image = out_channels.transpose((1, 2, 0))
         # Convert from floats back to unsigned bytes for skimage
-        out_image = numpy.uint8(out_image)
+        out_image = np.uint8(out_image)
         skimage.io.imsave(dest_path, out_image)
     return wrapped
 
@@ -147,11 +146,11 @@ def plot_amp(image):
     amp, _phase = freq_to_amp_phase(freq)
 
     # Roll by 1/2 along each axis to bring the low frequencies to the center
-    amp = fft.fftshift(amp)
+    amp = np.fft.fftshift(amp)
     # There's a huge range of variation in amplitude, so use a log transform
-    amp = numpy.log2(amp)
-    lo = numpy.min(amp)
-    hi = numpy.max(amp)
+    amp = np.log2(amp)
+    lo = np.min(amp)
+    hi = np.max(amp)
     return (amp - lo) / (hi - lo) * 255
 
 
@@ -163,15 +162,15 @@ def plot_phase(image):
     _amp, phase = freq_to_amp_phase(freq)
 
     # Roll by 1/2 along each axis to bring the low frequencies to the center
-    phase = fft.fftshift(phase)
+    phase = np.fft.fftshift(phase)
     # Phase is in radians, so just bring it to range and rescale it.
     phase = phase % (2 * math.pi)
     return phase / (2 * math.pi) * 255
 
 
 def roll_xy(arr, x, y):
-    arr = numpy.roll(arr, y, (0,))
-    arr = numpy.roll(arr, x, (1,))
+    arr = np.roll(arr, y, (0,))
+    arr = np.roll(arr, x, (1,))
     return arr
 
 
@@ -220,13 +219,13 @@ def speckle(val):
 @cli.command('speckle_amp')
 @xform_amp
 def speckle_amp(amp):
-    return numpy.vectorize(speckle)(amp)
+    return np.vectorize(speckle)(amp)
 
 
 @cli.command('speckle_phase')
 @xform_phase
 def speckle_phase(phase):
-    return numpy.vectorize(speckle)(phase)
+    return np.vectorize(speckle)(phase)
 
 
 #=============#
