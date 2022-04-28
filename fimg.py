@@ -212,20 +212,22 @@ def const_phase(phase, circle_fraction):
     return phase * 0 + circle_fraction * 2 * math.pi
 
 
-def speckle(val):
-    return val * random()
+def speckle(arr):
+    # TODO Accept RNG seed in CLI
+    rng = np.random.default_rng()
+    return arr * rng.random(arr.shape)
 
 
 @cli.command('speckle_amp')
 @xform_amp
 def speckle_amp(amp):
-    return np.vectorize(speckle)(amp)
+    return speckle(amp)
 
 
 @cli.command('speckle_phase')
 @xform_phase
 def speckle_phase(phase):
-    return np.vectorize(speckle)(phase)
+    return speckle(phase)
 
 
 #=============#
