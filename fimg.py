@@ -14,30 +14,6 @@ import skimage
 #===========#
 
 
-def load_image_grayscale(src_path):
-    image = skimage.io.imread(src_path)
-    if len(image.shape) > 2:
-        # A third dimension means more than one channel, so how many
-        # channels did we get?
-        if image.shape[2] == 3:
-            image = skimage.color.rgb2gray(image)
-        elif image.shape[2] == 4:
-            # Flatten with black background, first
-            image = skimage.color.rgba2rgb(image, background=(0, 0, 0))
-            image = skimage.color.rgb2gray(image)
-        else:
-            raise Exception(f"Unknown image shape: {image.shape}")
-
-    # Ensures intensity is represented as 0-255 int and not as float or whatever
-    return skimage.util.img_as_ubyte(image)
-
-
-def save_image_grayscale(dest_path, image_data):
-    # Convert from floats back to unsigned bytes for skimage
-    out_image_data = numpy.uint8(image_data)
-    skimage.io.imsave(dest_path, out_image_data)
-
-
 def spatial_to_freq(spatial):
     return fft.fft2(spatial)
 
@@ -71,7 +47,7 @@ def cli():
 
 def xform_image(xfunc):
     """
-    Wraps a function that handles image spatial data.
+    Wraps a function that handles single-channel image spatial data.
 
     Outermost transform decorator that handles image loading and saving.
     This one even adds its own Click arguments.
@@ -80,9 +56,27 @@ def xform_image(xfunc):
     @click.argument('src_path', type=click.Path(exists=True))
     @click.argument('dest_path', type=click.Path())
     def wrapped(src_path, dest_path, *cmd_args, **cmd_kwargs):
-        src_image = load_image_grayscale(src_path)
+        src_image = skimage.io.imread(src_path)
+        if len(src_image.shape) > 2:
+            # A third dimension means more than one channel, so how many
+            # channels did we get?
+            if src_image.shape[2] == 3:
+                src_image = skimage.color.rgb2gray(src_image)
+            elif src_image.shape[2] == 4:
+                # Flatten with black background, first
+                src_image = skimage.color.rgba2rgb(src_image, background=(0, 0, 0))
+                src_image = skimage.color.rgb2gray(src_image)
+            else:
+                raise Exception(f"Unknown image shape: {src_image.shape}")
+
+        # Ensures intensity is represented as 0-255 int and not as float or whatever
+        src_image = skimage.util.img_as_ubyte(src_image)
+
         out_image = xfunc(src_image, *cmd_args, **cmd_kwargs)
-        save_image_grayscale(dest_path, out_image)
+
+        # Convert from floats back to unsigned bytes for skimage
+        out_image = numpy.uint8(out_image)
+        skimage.io.imsave(dest_path, out_image)
     return wrapped
 
 
