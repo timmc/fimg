@@ -3,3 +3,4 @@
 
 numpy # FFT
 scikit-image # Image loading and saving
+click # CLI

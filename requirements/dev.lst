@@ -6,6 +6,7 @@
 #
 click==8.1.2
     # via
+    #   -r dev.spec
     #   -r pip-tools.lst
     #   pip-tools
 imageio==2.18.0
