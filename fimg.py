@@ -39,10 +39,12 @@ def amp_phase_to_freq(amp, phase):
 @click.group()
 @click.argument('src_path', type=click.Path(exists=True))
 @click.argument('dest_path', type=click.Path())
+@click.option(
+    '--out-of-range', type=click.Choice(['mod', 'clip', 'rescale']), default='mod',
+)
 @click.pass_context
-def cli(ctx, src_path, dest_path):
-    ctx.obj['src_path'] = src_path
-    ctx.obj['dest_path'] = dest_path
+def cli(ctx, **kwargs):
+    ctx.obj = kwargs
 
 # A whole bunch of awful, nested decorators that act as transformation
 # lenses so that commands can just focus on the aspect of the data
@@ -84,6 +86,21 @@ def xform_image(xfunc):
 
         # Put the channel dimension back at the end
         out_image = out_channels.transpose((1, 2, 0))
+
+        if np.amin(out_image) < 0 or np.amax(out_image) > 255:
+            oor = ctx.obj['out_of_range']
+            if oor == 'mod':
+                out_image = np.mod(out_image, 255)
+            elif oor == 'clip':
+                out_image = np.clip(out_image, 0, 255)
+            elif oor == 'rescale':
+                print(f"Subtracting {np.amin(out_image)}")
+                out_image = out_image - np.amin(out_image)
+                print(f"Times 255 div {np.amax(out_image)}")
+                out_image = out_image * (255 / np.amax(out_image))
+            else:
+                raise Exception(f"Unknown out-of-range option: {oor}")
+
         # Convert from floats back to unsigned bytes for skimage
         out_image = np.uint8(out_image)
         skimage.io.imsave(dest_path, out_image)
