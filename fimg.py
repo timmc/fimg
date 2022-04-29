@@ -22,15 +22,11 @@ def freq_to_spatial(freq, shape):
 
 
 def freq_to_amp_phase(freq):
-    amp = abs(freq)
-    phase = np.angle(freq)
-    return amp, phase
+    return abs(freq), np.angle(freq)
 
 
 def amp_phase_to_freq(amp, phase):
-    real = np.cos(phase) * amp
-    imag = np.sin(phase) * amp
-    return real + imag * complex(0, 1)
+    return amp * (np.cos(phase) + np.sin(phase) * 1j)
 
 
 def rescale(arr, in_low, in_high, out_low, out_high):
@@ -89,6 +85,11 @@ def xform_image(xfunc):
             # two dimensions.
             src_channels = src_image[np.newaxis, :, :]
         elif len(src_image.shape) == 3:
+            if src_image.shape[2] == 4:
+                # Probably RGBA -- apply the alpha channel first.
+                src_image = skimage.color.rgba2rgb(src_image)
+            elif src_image.shape[2] != 3:
+                raise Exception(f"Unexpected number of channels: {src_image.shape[2]}")
             # Multi-channel images have the channels as a tail
             # dimension; bring it up front so we can iterate over the
             # channels.
@@ -187,10 +188,10 @@ def plot_amp(image):
     # Roll by 1/2 along each axis to bring the low frequencies to the center
     amp = np.fft.fftshift(amp)
     # There's a huge range of variation in amplitude, so use a log transform
+    amp += -np.amin(amp) + 1.1
     amp = np.log2(amp)
-    lo = np.min(amp)
-    hi = np.max(amp)
-    return (amp - lo) / (hi - lo) * 255
+    # Then just rescale to full intensity range
+    return rescale(amp, np.amin(amp), np.amax(amp), 0, 255)
 
 
 @cli.command('plot_phase')
@@ -204,7 +205,7 @@ def plot_phase(image):
     phase = np.fft.fftshift(phase)
     # Phase is in radians, so just bring it to range and rescale it.
     phase = phase % (2 * math.pi)
-    return phase / (2 * math.pi) * 255
+    return rescale(phase, 0, 2 * math.pi, 0, 255)
 
 
 def roll_xy(arr, x, y):
