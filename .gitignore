@@ -4,3 +4,6 @@
 # Python compilation artifacts
 *.pyc
 __pycache__
+
+# I usually dump intermediate output files here
+/out/
