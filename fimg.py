@@ -94,9 +94,7 @@ def xform_image(xfunc):
             elif oor == 'clip':
                 out_image = np.clip(out_image, 0, 255)
             elif oor == 'rescale':
-                print(f"Subtracting {np.amin(out_image)}")
                 out_image = out_image - np.amin(out_image)
-                print(f"Times 255 div {np.amax(out_image)}")
                 out_image = out_image * (255 / np.amax(out_image))
             else:
                 raise Exception(f"Unknown out-of-range option: {oor}")
