@@ -32,6 +32,11 @@ def amp_phase_to_freq(amp, phase):
     imag = np.sin(phase) * amp
     return real + imag * complex(0, 1)
 
+
+def rescale(arr, in_low, in_high, out_low, out_high):
+    return (arr - in_low) / (in_high - in_low) * (out_high - out_low) + out_low
+
+
 #==========#
 # CLI crud #
 #==========#
@@ -40,7 +45,19 @@ def amp_phase_to_freq(amp, phase):
 @click.argument('src_path', type=click.Path(exists=True))
 @click.argument('dest_path', type=click.Path())
 @click.option(
-    '--out-of-range', type=click.Choice(['mod', 'clip', 'rescale']), default='mod',
+    '--out-of-range',
+    type=click.Choice([
+        'mod', 'clip',
+        'percentile-pull-clip',
+    ]),
+    default='mod',
+)
+@click.option(
+    '--clip-percentile',
+    help=("When using percentile-pull-clip for out-of-range inputs, "
+          "use this value and 100 minus this value for the percentiles "
+          "to be pulled into range."),
+    type=float, default='10',
 )
 @click.pass_context
 def cli(ctx, **kwargs):
@@ -93,9 +110,16 @@ def xform_image(xfunc):
                 out_image = np.mod(out_image, 255)
             elif oor == 'clip':
                 out_image = np.clip(out_image, 0, 255)
-            elif oor == 'rescale':
-                out_image = out_image - np.amin(out_image)
-                out_image = out_image * (255 / np.amax(out_image))
+            elif oor == 'percentile-pull-clip':
+                # Linear transform pulling low and high
+                # percentiles towards [0, 255] unless they're already
+                # inside it; then clip as needed.
+                ptile_lo = np.percentile(out_image, ctx.obj['clip_percentile'])
+                ptile_hi = np.percentile(out_image, 100 - ctx.obj['clip_percentile'])
+                rescale_lo = min(ptile_lo, 0)
+                rescale_hi = max(255, ptile_hi)
+                out_image = rescale(out_image, rescale_lo, rescale_hi, 0, 255)
+                out_image = np.clip(out_image, 0, 255)
             else:
                 raise Exception(f"Unknown out-of-range option: {oor}")
 
