@@ -63,7 +63,7 @@ def cli(ctx, **kwargs):
 # lenses so that commands can just focus on the aspect of the data
 # they want.
 
-def xform_image(xfunc):
+def operate_on_image(xfunc):
     """
     Wraps a function that handles single-channel image spatial data.
 
@@ -130,12 +130,12 @@ def xform_image(xfunc):
     return wrapped
 
 
-def xform_freq(cmd):
+def operate_on_freq(cmd):
     """
     Wrap a function that transforms complex frequency data so it takes image spatial data.
     """
     @wraps(cmd)
-    @xform_image
+    @operate_on_image
     def wrapped(image, *cmd_args, **cmd_kwargs):
         src_freq = spatial_to_freq(image)
         out_freq = cmd(src_freq, *cmd_args, **cmd_kwargs)
@@ -143,24 +143,24 @@ def xform_freq(cmd):
     return wrapped
 
 
-def xform_amp(cmd):
+def operate_on_amp(cmd):
     """
     Wrap a function that transforms amplitude so it takes complex frequency data.
     """
     @wraps(cmd)
-    @xform_freq
+    @operate_on_freq
     def wrapped(freq, *cmd_args, **cmd_kwargs):
         amp, phase = freq_to_amp_phase(freq)
         return amp_phase_to_freq(cmd(amp, *cmd_args, **cmd_kwargs), phase)
     return wrapped
 
 
-def xform_phase(cmd):
+def operate_on_phase(cmd):
     """
     Wrap a function that transforms phase so it takes complex frequency data.
     """
     @wraps(cmd)
-    @xform_freq
+    @operate_on_freq
     def wrapped(freq, *cmd_args, **cmd_kwargs):
         amp, phase = freq_to_amp_phase(freq)
         return amp_phase_to_freq(amp, cmd(phase, *cmd_args, **cmd_kwargs))
@@ -203,7 +203,7 @@ def opt_angles(cmd):
 
 @cli.command('phase_shift')
 @opt_angles
-@xform_phase
+@operate_on_phase
 def phase_shift(phase, radians):
     """
     Add the given angle to the phase.
@@ -218,7 +218,7 @@ def phase_shift(phase, radians):
 
 
 @cli.command('plot_amp')
-@xform_image
+@operate_on_image
 def plot_amp(image):
     """Render amplitude as spatial image data."""
     freq = spatial_to_freq(image)
@@ -234,7 +234,7 @@ def plot_amp(image):
 
 
 @cli.command('plot_phase')
-@xform_image
+@operate_on_image
 def plot_phase(image):
     """Render phase as spatial image data."""
     freq = spatial_to_freq(image)
@@ -256,7 +256,7 @@ def roll_xy(arr, x, y):
 @cli.command('roll_freq')
 @click.option('--x', required=True, type=int)
 @click.option('--y', required=True, type=int)
-@xform_freq
+@operate_on_freq
 def roll_freq(freq, x, y):
     return roll_xy(freq, x, y)
 
@@ -264,7 +264,7 @@ def roll_freq(freq, x, y):
 @cli.command('roll_amp')
 @click.option('--x', required=True, type=int)
 @click.option('--y', required=True, type=int)
-@xform_amp
+@operate_on_amp
 def roll_amp(amp, x, y):
     return roll_xy(amp, x, y)
 
@@ -272,21 +272,21 @@ def roll_amp(amp, x, y):
 @cli.command('roll_phase')
 @click.option('--x', required=True, type=int)
 @click.option('--y', required=True, type=int)
-@xform_phase
+@operate_on_phase
 def roll_phase(phase, x, y):
     return roll_xy(phase, x, y)
 
 
 @cli.command('const_amp')
 @click.option('--value', required=True, type=float)
-@xform_amp
+@operate_on_amp
 def const_amp(amp, value):
     return amp * 0 + value
 
 
 @cli.command('const_phase')
 @opt_angles
-@xform_phase
+@operate_on_phase
 def const_phase(phase, radians):
     return phase * 0 + radians
 
@@ -298,13 +298,13 @@ def speckle(arr):
 
 
 @cli.command('speckle_amp')
-@xform_amp
+@operate_on_amp
 def speckle_amp(amp):
     return speckle(amp)
 
 
 @cli.command('speckle_phase')
-@xform_phase
+@operate_on_phase
 def speckle_phase(phase):
     return speckle(phase)
 
