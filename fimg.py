@@ -72,7 +72,7 @@ def operate_on_image(xfunc):
     """
     @wraps(xfunc)
     @click.pass_context
-    def wrapped(ctx, *cmd_args, **cmd_kwargs):
+    def on_image_wrapper(ctx, *cmd_args, **cmd_kwargs):
         src_path = ctx.obj['src_path']
         dest_path = ctx.obj['dest_path']
 
@@ -127,7 +127,7 @@ def operate_on_image(xfunc):
         # Convert from floats back to unsigned bytes for skimage
         out_image = np.uint8(out_image)
         skimage.io.imsave(dest_path, out_image)
-    return wrapped
+    return on_image_wrapper
 
 
 def operate_on_freq(cmd):
@@ -136,11 +136,12 @@ def operate_on_freq(cmd):
     """
     @wraps(cmd)
     @operate_on_image
-    def wrapped(image, *cmd_args, **cmd_kwargs):
+    def on_freq_wrapper(image, *cmd_args, **cmd_kwargs):
         src_freq = spatial_to_freq(image)
         out_freq = cmd(src_freq, *cmd_args, **cmd_kwargs)
+        assert out_freq is not None
         return freq_to_spatial(out_freq, image.shape)
-    return wrapped
+    return on_freq_wrapper
 
 
 def operate_on_amp(cmd):
@@ -149,10 +150,10 @@ def operate_on_amp(cmd):
     """
     @wraps(cmd)
     @operate_on_freq
-    def wrapped(freq, *cmd_args, **cmd_kwargs):
+    def on_amp_wrapper(freq, *cmd_args, **cmd_kwargs):
         amp, phase = freq_to_amp_phase(freq)
         return amp_phase_to_freq(cmd(amp, *cmd_args, **cmd_kwargs), phase)
-    return wrapped
+    return on_amp_wrapper
 
 
 def operate_on_phase(cmd):
@@ -161,10 +162,10 @@ def operate_on_phase(cmd):
     """
     @wraps(cmd)
     @operate_on_freq
-    def wrapped(freq, *cmd_args, **cmd_kwargs):
+    def on_phase_wrapper(freq, *cmd_args, **cmd_kwargs):
         amp, phase = freq_to_amp_phase(freq)
         return amp_phase_to_freq(amp, cmd(phase, *cmd_args, **cmd_kwargs))
-    return wrapped
+    return on_phase_wrapper
 
 
 def opt_angles(cmd):
@@ -177,7 +178,7 @@ def opt_angles(cmd):
     @click.option('--radians', '--rad', type=float)
     @click.option('--degrees', '--deg', type=float)
     @click.option('--turns', type=float)
-    def wrapped(*cmd_args, radians, degrees, turns, **cmd_kwargs):
+    def opt_angles_wrapper(*cmd_args, radians, degrees, turns, **cmd_kwargs):
         angle_count = len([x for x in [radians, degrees, turns] if x is not None])
         if angle_count != 1:
             raise click.UsageError(
@@ -194,7 +195,7 @@ def opt_angles(cmd):
             raise Exception("Early validation somehow failed to detect lack of rad, deg, or turn option")
 
         return cmd(*cmd_args, **dict(**cmd_kwargs, radians=radians))
-    return wrapped
+    return opt_angles_wrapper
 
 
 #==========#
