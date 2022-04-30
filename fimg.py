@@ -17,8 +17,8 @@ def spatial_to_freq(spatial):
     return np.fft.fft2(spatial)
 
 
-def freq_to_spatial(freq, shape):
-    return np.fft.irfft2(freq, shape)
+def freq_to_spatial(freq):
+    return np.fft.irfft2(freq, freq.shape)
 
 
 def freq_to_amp_phase(freq):
@@ -140,7 +140,7 @@ def operate_on_freq(cmd):
         src_freq = spatial_to_freq(image)
         out_freq = cmd(src_freq, *cmd_args, **cmd_kwargs)
         assert out_freq is not None
-        return freq_to_spatial(out_freq, image.shape)
+        return freq_to_spatial(out_freq)
     return on_freq_wrapper
 
 
