@@ -175,7 +175,8 @@ def xform_phase(cmd):
 @xform_phase
 def rotate_phase(phase, circle_fraction):
     full_circle = 2 * math.pi
-    return (phase + math.pi + (full_circle * circle_fraction)) % full_circle - math.pi
+    radians = full_circle * circle_fraction
+    return phase + radians
 
 
 @cli.command('plot_amp')
