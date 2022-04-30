@@ -26,7 +26,7 @@ def freq_to_amp_phase(freq):
 
 
 def amp_phase_to_freq(amp, phase):
-    return amp * (np.cos(phase) + np.sin(phase) * 1j)
+    return amp * math.e ** (1j * phase)  # r * e^(i * theta)
 
 
 def rescale(arr, in_low, in_high, out_low, out_high):
