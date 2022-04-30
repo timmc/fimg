@@ -310,6 +310,32 @@ def speckle_phase(phase):
     return speckle(phase)
 
 
+@cli.command('band_filter')
+@click.option('--mode', required=True, type=click.Choice(['pass', 'reject']))
+@click.option('--x', required=True, nargs=2, type=int)
+@click.option('--y', required=True, nargs=2, type=int)
+@operate_on_freq
+def band_filter(freq, mode, x, y):
+    """
+    Pass or reject frequencies in a certain band.
+
+    Each of --x and --y takes a pair [from, until).
+    """
+    (x_from, x_until) = x
+    (y_from, y_until) = y
+    if mode == 'reject':
+        freq[y_from:y_until, :] = 0
+        freq[:, x_from:x_until] = 0
+    elif mode == 'pass':
+        freq[:y_from, :] = 0
+        freq[y_until:, :] = 0
+        freq[:, :x_from] = 0
+        freq[:, x_until:] = 0
+    else:
+        raise Exception(f"Unexpected mode: {mode}")
+    return freq
+
+
 #=============#
 # Entry point #
 #=============#
