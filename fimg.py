@@ -211,6 +211,9 @@ def phase_shift(phase, radians):
     Previously known as phase_rotate_angle -- can be thought of as rotation in
     the complex plane, or shifting in the spatial plane.
     """
+    # We could avoid the extra computation of separating amplitude and phase
+    # by operating on freq directly and returning `freq * math.e ** (1j * radians)`
+    # but this is just simpler to read.
     return phase + radians
 
 
