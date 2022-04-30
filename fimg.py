@@ -282,10 +282,10 @@ def const_amp(amp, value):
 
 
 @cli.command('const_phase')
-@click.option('--circle-fraction', required=True, type=float)  # TODO use @opt_angles instead
+@opt_angles
 @xform_phase
-def const_phase(phase, circle_fraction):
-    return phase * 0 + circle_fraction * 2 * math.pi
+def const_phase(phase, radians):
+    return phase * 0 + radians
 
 
 def speckle(arr):
