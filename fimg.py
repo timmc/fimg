@@ -166,16 +166,51 @@ def xform_phase(cmd):
         return amp_phase_to_freq(amp, cmd(phase, *cmd_args, **cmd_kwargs))
     return wrapped
 
+
+def opt_angles(cmd):
+    """
+    Add --radians option, with alternatives --degrees and --turns.
+
+    Performs validation and conversion first.
+    """
+    @wraps(cmd)
+    @click.option('--radians', '--rad', type=float)
+    @click.option('--degrees', '--deg', type=float)
+    @click.option('--turns', type=float)
+    def wrapped(*cmd_args, radians, degrees, turns, **cmd_kwargs):
+        angle_count = len([x for x in [radians, degrees, turns] if x is not None])
+        if angle_count != 1:
+            raise click.UsageError(
+                "Exactly one of --radians, --degrees, or --turns "
+                f"must be supplied (was {angle_count})"
+            )
+
+        if degrees is not None:
+            radians = degrees / 180 * math.pi
+        elif turns is not None:
+            radians = 2 * math.pi * turns
+
+        if radians is None:
+            raise Exception("Early validation somehow failed to detect lack of rad, deg, or turn option")
+
+        return cmd(*cmd_args, **dict(**cmd_kwargs, radians=radians))
+    return wrapped
+
+
 #==========#
 # Commands #
 #==========#
 
-@cli.command('phase_rotate_angle')
-@click.option('--circle-fraction', required=True, type=float)
+@cli.command('phase_shift')
+@opt_angles
 @xform_phase
-def rotate_phase(phase, circle_fraction):
-    full_circle = 2 * math.pi
-    radians = full_circle * circle_fraction
+def phase_shift(phase, radians):
+    """
+    Add the given angle to the phase.
+
+    Previously known as phase_rotate_angle -- can be thought of as rotation in
+    the complex plane, or shifting in the spatial plane.
+    """
     return phase + radians
 
 
@@ -247,7 +282,7 @@ def const_amp(amp, value):
 
 
 @cli.command('const_phase')
-@click.option('--circle-fraction', required=True, type=float)
+@click.option('--circle-fraction', required=True, type=float)  # TODO use @opt_angles instead
 @xform_phase
 def const_phase(phase, circle_fraction):
     return phase * 0 + circle_fraction * 2 * math.pi
