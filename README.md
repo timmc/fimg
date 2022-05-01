@@ -1,6 +1,10 @@
 # Modify the frequency domain of images
 
-A playground repo.
+A playground repo for artistic exploration of spatial frequencies.
+
+This code is not to be used for scientific analysis or for anything
+else important. I don't actually know what I'm doing and I'm about 80%
+sure that I'm using FFTs wrong here in some fundamental way.
 
 ## Usage
 
