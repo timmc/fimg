@@ -312,6 +312,20 @@ def speckle_phase(phase):
     return speckle(phase)
 
 
+def filter_first_axis(image, mode, bounds):
+    freq = np.fft.fft2(image, axes=(0, 1))
+    (start, until) = bounds
+    if mode == 'reject':
+        freq[start:until, :] = 0
+    elif mode == 'pass':
+        freq[:start, :] = 0
+        freq[until:, :] = 0
+    else:
+        raise Exception(f"Unexpected mode: {mode}")
+    image = np.fft.irfft2(freq, s=freq.shape, axes=(0, 1))
+    return image
+
+
 @cli.command('band_filter')
 @click.option('--mode', required=True, type=click.Choice(['pass', 'reject']))
 @click.option('--x', nargs=2, type=int)
@@ -326,31 +340,13 @@ def band_filter(image, mode, x, y):
     # Handle x and y axes separately, performing the FFT on that axis
     # first in each case.
 
-    # TODO: Deduplicate code using transpose or something
+    if y is not None:
+        image = filter_first_axis(image, mode, y)
 
     if x is not None:
-        freq = np.fft.fft2(image, axes=(1, 0))
-        (x_from, x_until) = x
-        if mode == 'reject':
-            freq[:, x_from:x_until] = 0
-        elif mode == 'pass':
-            freq[:, :x_from] = 0
-            freq[:, x_until:] = 0
-        else:
-            raise Exception(f"Unexpected mode: {mode}")
-        image = np.fft.irfft2(freq, s=freq.shape, axes=(1, 0))
-
-    if y is not None:
-        freq = np.fft.fft2(image, axes=(0, 1))
-        (y_from, y_until) = y
-        if mode == 'reject':
-            freq[y_from:y_until, :] = 0
-        elif mode == 'pass':
-            freq[:y_from, :] = 0
-            freq[y_until:, :] = 0
-        else:
-            raise Exception(f"Unexpected mode: {mode}")
-        image = np.fft.irfft2(freq, s=freq.shape, axes=(0, 1))
+        image = np.transpose(image)
+        image = filter_first_axis(image, mode, x)
+        image = np.transpose(image)
 
     return image
 
