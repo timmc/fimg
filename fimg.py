@@ -105,6 +105,8 @@ def operate_on_image(xfunc):
         # Put the channel dimension back at the end
         out_image = out_channels.transpose((1, 2, 0))
 
+        # TODO: Option to rescale the channels in lockstep, rather
+        # than separately.
         if np.amin(out_image) < 0 or np.amax(out_image) > 255:
             oor = ctx.obj['out_of_range']
             if oor == 'mod':
@@ -312,28 +314,45 @@ def speckle_phase(phase):
 
 @cli.command('band_filter')
 @click.option('--mode', required=True, type=click.Choice(['pass', 'reject']))
-@click.option('--x', required=True, nargs=2, type=int)
-@click.option('--y', required=True, nargs=2, type=int)
-@operate_on_freq
-def band_filter(freq, mode, x, y):
+@click.option('--x', nargs=2, type=int)
+@click.option('--y', nargs=2, type=int)
+@operate_on_image
+def band_filter(image, mode, x, y):
     """
     Pass or reject frequencies in a certain band.
 
     Each of --x and --y takes a pair [from, until).
     """
-    (x_from, x_until) = x
-    (y_from, y_until) = y
-    if mode == 'reject':
-        freq[y_from:y_until, :] = 0
-        freq[:, x_from:x_until] = 0
-    elif mode == 'pass':
-        freq[:y_from, :] = 0
-        freq[y_until:, :] = 0
-        freq[:, :x_from] = 0
-        freq[:, x_until:] = 0
-    else:
-        raise Exception(f"Unexpected mode: {mode}")
-    return freq
+    # Handle x and y axes separately, performing the FFT on that axis
+    # first in each case.
+
+    # TODO: Deduplicate code using transpose or something
+
+    if x is not None:
+        freq = np.fft.fft2(image, axes=(1, 0))
+        (x_from, x_until) = x
+        if mode == 'reject':
+            freq[:, x_from:x_until] = 0
+        elif mode == 'pass':
+            freq[:, :x_from] = 0
+            freq[:, x_until:] = 0
+        else:
+            raise Exception(f"Unexpected mode: {mode}")
+        image = np.fft.irfft2(freq, s=freq.shape, axes=(1, 0))
+
+    if y is not None:
+        freq = np.fft.fft2(image, axes=(0, 1))
+        (y_from, y_until) = y
+        if mode == 'reject':
+            freq[y_from:y_until, :] = 0
+        elif mode == 'pass':
+            freq[:y_from, :] = 0
+            freq[y_until:, :] = 0
+        else:
+            raise Exception(f"Unexpected mode: {mode}")
+        image = np.fft.irfft2(freq, s=freq.shape, axes=(0, 1))
+
+    return image
 
 
 #=============#
