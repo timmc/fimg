@@ -1,8 +1,7 @@
 from functools import wraps
-from inspect import signature
 import math
 from random import random
-import sys
+from textwrap import dedent
 
 import click
 import numpy as np
@@ -41,17 +40,27 @@ def rescale(arr, in_low, in_high, out_low, out_high):
 @click.argument('src_path', type=click.Path(exists=True))
 @click.argument('dest_path', type=click.Path())
 @click.option(
-    '--out-of-range',
-    type=click.Choice([
-        'mod', 'clip',
-        'percentile-pull-clip',
-    ]),
-    default='mod',
+    '--out-of-range', '-o',
+    type=click.Choice(['mod', 'clip','lin-cent',]), default='mod',
+    help=dedent("""
+    Global: How to handle out-of-range values when saving.
+
+    `mod` takes the modulo of pixel intensity against 255, resulting
+    in sharp inversion bands, but no change to in-range pixels.
+
+    `clip` caps high values to 255 and low to 0, resulting in
+    completely black or white patches.
+
+    `lin-cent` is a linear rescale based on percentiles:
+    If the low or high percentile (defined by --clip-centile) is
+    out of range, do a linear rescale with the effect of pulling that
+    percentile to 0 or 255, then clip anything still out of range.
+    """),
 )
 @click.option(
-    '--clip-percentile',
-    help=("When using percentile-pull-clip for out-of-range inputs, "
-          "use this value and 100 minus this value for the percentiles "
+    '--clip-centile',
+    help=("Global: When using lin-cent for out-of-range inputs, "
+          "use this value (and 100 minus this value) for the percentiles "
           "to be pulled into range."),
     type=float, default='10',
 )
@@ -113,12 +122,9 @@ def operate_on_image(xfunc):
                 out_image = np.mod(out_image, 255)
             elif oor == 'clip':
                 out_image = np.clip(out_image, 0, 255)
-            elif oor == 'percentile-pull-clip':
-                # Linear transform pulling low and high
-                # percentiles towards [0, 255] unless they're already
-                # inside it; then clip as needed.
-                ptile_lo = np.percentile(out_image, ctx.obj['clip_percentile'])
-                ptile_hi = np.percentile(out_image, 100 - ctx.obj['clip_percentile'])
+            elif oor == 'lin-cent':
+                ptile_lo = np.percentile(out_image, ctx.obj['clip_centile'])
+                ptile_hi = np.percentile(out_image, 100 - ctx.obj['clip_centile'])
                 rescale_lo = min(ptile_lo, 0)
                 rescale_hi = max(255, ptile_hi)
                 out_image = rescale(out_image, rescale_lo, rescale_hi, 0, 255)
@@ -204,12 +210,12 @@ def opt_angles(cmd):
 # Commands #
 #==========#
 
-@cli.command('phase_shift')
+@cli.command('phase-shift')
 @opt_angles
 @operate_on_phase
 def phase_shift(phase, radians):
     """
-    Add the given angle to the phase.
+    Add the given angle to the phase. Effects are along the X axis.
 
     Previously known as phase_rotate_angle -- can be thought of as rotation in
     the complex plane, or shifting in the spatial plane.
@@ -220,7 +226,7 @@ def phase_shift(phase, radians):
     return phase + radians
 
 
-@cli.command('plot_amp')
+@cli.command('plot-amp')
 @operate_on_image
 def plot_amp(image):
     """Render amplitude as spatial image data."""
@@ -236,7 +242,7 @@ def plot_amp(image):
     return rescale(amp, np.amin(amp), np.amax(amp), 0, 255)
 
 
-@cli.command('plot_phase')
+@cli.command('plot-phase')
 @operate_on_image
 def plot_phase(image):
     """Render phase as spatial image data."""
@@ -256,7 +262,7 @@ def roll_xy(arr, x, y):
     return arr
 
 
-@cli.command('roll_freq')
+@cli.command('roll-freq')
 @click.option('--x', required=True, type=int)
 @click.option('--y', required=True, type=int)
 @operate_on_freq
@@ -264,7 +270,7 @@ def roll_freq(freq, x, y):
     return roll_xy(freq, x, y)
 
 
-@cli.command('roll_amp')
+@cli.command('roll-amp')
 @click.option('--x', required=True, type=int)
 @click.option('--y', required=True, type=int)
 @operate_on_amp
@@ -272,7 +278,7 @@ def roll_amp(amp, x, y):
     return roll_xy(amp, x, y)
 
 
-@cli.command('roll_phase')
+@cli.command('roll-phase')
 @click.option('--x', required=True, type=int)
 @click.option('--y', required=True, type=int)
 @operate_on_phase
@@ -280,14 +286,14 @@ def roll_phase(phase, x, y):
     return roll_xy(phase, x, y)
 
 
-@cli.command('const_amp')
+@cli.command('const-amp')
 @click.option('--value', required=True, type=float)
 @operate_on_amp
 def const_amp(amp, value):
     return amp * 0 + value
 
 
-@cli.command('const_phase')
+@cli.command('const-phase')
 @opt_angles
 @operate_on_phase
 def const_phase(phase, radians):
@@ -300,13 +306,13 @@ def speckle(arr):
     return arr * rng.random(arr.shape)
 
 
-@cli.command('speckle_amp')
+@cli.command('speckle-amp')
 @operate_on_amp
 def speckle_amp(amp):
     return speckle(amp)
 
 
-@cli.command('speckle_phase')
+@cli.command('speckle-phase')
 @operate_on_phase
 def speckle_phase(phase):
     return speckle(phase)
@@ -326,8 +332,8 @@ def filter_first_axis(image, mode, bounds):
     return image
 
 
-@cli.command('band_filter')
-@click.option('--mode', required=True, type=click.Choice(['pass', 'reject']))
+@cli.command('band-filter')
+@click.argument('mode', required=True, type=click.Choice(['pass', 'reject']))
 @click.option('--x', nargs=2, type=int)
 @click.option('--y', nargs=2, type=int)
 @operate_on_image
