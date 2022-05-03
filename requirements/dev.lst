@@ -4,13 +4,15 @@
 #
 #    redo requirements/upgrade
 #
-click==8.1.2
+click==8.1.3
     # via
     #   -r dev.spec
     #   -r pip-tools.lst
     #   pip-tools
-imageio==2.18.0
-    # via scikit-image
+imageio==2.19.0
+    # via
+    #   -r dev.spec
+    #   scikit-image
 networkx==2.8
     # via scikit-image
 numpy==1.22.3
@@ -41,7 +43,7 @@ scikit-image==0.19.2
     # via -r dev.spec
 scipy==1.8.0
     # via scikit-image
-tifffile==2022.4.26
+tifffile==2022.4.28
     # via scikit-image
 tomli==2.0.1
     # via

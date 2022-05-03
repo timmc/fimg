@@ -2,8 +2,10 @@ from functools import wraps
 import math
 from random import random
 from textwrap import dedent
+import sys
 
 import click
+import imageio
 import numpy as np
 import skimage
 
@@ -37,8 +39,9 @@ def rescale(arr, in_low, in_high, out_low, out_high):
 #==========#
 
 @click.group()
-@click.argument('src_path', type=click.Path(exists=True))
-@click.argument('dest_path', type=click.Path())
+@click.argument('src', type=click.File(mode='rb'))
+@click.argument('dest', type=click.File(mode='wb', lazy=True))
+@click.option('--out-format', type=click.Choice(['jpg', 'png']), default='png')
 @click.option(
     '--out-of-range', '-o',
     type=click.Choice(['mod', 'clip','lin-cent',]), default='mod',
@@ -82,10 +85,10 @@ def operate_on_image(xfunc):
     @wraps(xfunc)
     @click.pass_context
     def on_image_wrapper(ctx, *cmd_args, **cmd_kwargs):
-        src_path = ctx.obj['src_path']
-        dest_path = ctx.obj['dest_path']
+        src_f = ctx.obj['src']
+        dest_f = ctx.obj['dest']
 
-        src_image = skimage.io.imread(src_path)
+        src_image = imageio.imread(src_f)
         # Ensures intensity is represented as 0-255 int and not as float or whatever
         src_image = skimage.util.img_as_ubyte(src_image)
 
@@ -134,7 +137,7 @@ def operate_on_image(xfunc):
 
         # Convert from floats back to unsigned bytes for skimage
         out_image = np.uint8(out_image)
-        skimage.io.imsave(dest_path, out_image)
+        imageio.imwrite(dest_f, out_image, format=ctx.obj['out_format'])
     return on_image_wrapper
 
 
