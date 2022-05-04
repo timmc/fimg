@@ -71,6 +71,58 @@ def rescale(arr, in_low, in_high, out_low, out_high):
 def cli(ctx, **kwargs):
     ctx.obj = kwargs
 
+
+def load_image_channels(src_file):
+    src_image = imageio.imread(src_file)
+    # Ensures intensity is represented as 0-255 int and not as float or whatever
+    src_image = skimage.util.img_as_ubyte(src_image)
+
+    if len(src_image.shape) == 2:
+        # If it's a single-channel image, it comes in with only
+        # two dimensions.
+        src_channels = src_image[np.newaxis, :, :]
+    elif len(src_image.shape) == 3:
+        if src_image.shape[2] == 4:
+            # Probably RGBA -- apply the alpha channel first.
+            src_image = skimage.color.rgba2rgb(src_image)
+        elif src_image.shape[2] != 3:
+            raise Exception(f"Unexpected number of channels: {src_image.shape[2]}")
+        # Multi-channel images have the channels as a tail
+        # dimension; bring it up front so we can iterate over the
+        # channels.
+        src_channels = src_image.transpose((2, 0, 1))
+    else:
+        raise Exception(f"Unexpected image shape: {src_image.shape}")
+
+    return src_channels
+
+
+def write_image(image_channels, dest_file, /, out_of_range, clip_centile, out_format):
+    # Put the channel dimension back at the end
+    out_image = image_channels.transpose((1, 2, 0))
+
+    # TODO: Option to rescale the channels in lockstep, rather
+    # than separately.
+    if np.amin(out_image) < 0 or np.amax(out_image) > 255:
+        if out_of_range == 'mod':
+            out_image = np.mod(out_image, 255)
+        elif out_of_range == 'clip':
+            out_image = np.clip(out_image, 0, 255)
+        elif out_of_range == 'lin-cent':
+            ptile_lo = np.percentile(out_image, clip_centile)
+            ptile_hi = np.percentile(out_image, 100 - clip_centile)
+            rescale_lo = min(ptile_lo, 0)
+            rescale_hi = max(255, ptile_hi)
+            out_image = rescale(out_image, rescale_lo, rescale_hi, 0, 255)
+            out_image = np.clip(out_image, 0, 255)
+        else:
+            raise Exception(f"Unknown out-of-range option: {out_of_range}")
+
+    # Convert from floats back to unsigned bytes for skimage
+    out_image = np.uint8(out_image)
+    imageio.imwrite(dest_file, out_image, format=out_format)
+
+
 # A whole bunch of awful, nested decorators that act as transformation
 # lenses so that commands can just focus on the aspect of the data
 # they want.
@@ -85,59 +137,16 @@ def operate_on_image(xfunc):
     @wraps(xfunc)
     @click.pass_context
     def on_image_wrapper(ctx, *cmd_args, **cmd_kwargs):
-        src_f = ctx.obj['src']
-        dest_f = ctx.obj['dest']
-
-        src_image = imageio.imread(src_f)
-        # Ensures intensity is represented as 0-255 int and not as float or whatever
-        src_image = skimage.util.img_as_ubyte(src_image)
-
-        if len(src_image.shape) == 2:
-            # If it's a single-channel image, it comes in with only
-            # two dimensions.
-            src_channels = src_image[np.newaxis, :, :]
-        elif len(src_image.shape) == 3:
-            if src_image.shape[2] == 4:
-                # Probably RGBA -- apply the alpha channel first.
-                src_image = skimage.color.rgba2rgb(src_image)
-            elif src_image.shape[2] != 3:
-                raise Exception(f"Unexpected number of channels: {src_image.shape[2]}")
-            # Multi-channel images have the channels as a tail
-            # dimension; bring it up front so we can iterate over the
-            # channels.
-            src_channels = src_image.transpose((2, 0, 1))
-        else:
-            raise Exception(f"Unexpected image shape: {src_image.shape}")
-
+        src_channels = load_image_channels(ctx.obj['src'])
         out_channels = np.array([
             xfunc(channel, *cmd_args, **cmd_kwargs)
             for channel in src_channels
         ])
+        write_image(
+            out_channels, ctx.obj['dest'],
+            **{k:ctx.obj[k] for k in ['out_of_range', 'clip_centile', 'out_format']}
+        )
 
-        # Put the channel dimension back at the end
-        out_image = out_channels.transpose((1, 2, 0))
-
-        # TODO: Option to rescale the channels in lockstep, rather
-        # than separately.
-        if np.amin(out_image) < 0 or np.amax(out_image) > 255:
-            oor = ctx.obj['out_of_range']
-            if oor == 'mod':
-                out_image = np.mod(out_image, 255)
-            elif oor == 'clip':
-                out_image = np.clip(out_image, 0, 255)
-            elif oor == 'lin-cent':
-                ptile_lo = np.percentile(out_image, ctx.obj['clip_centile'])
-                ptile_hi = np.percentile(out_image, 100 - ctx.obj['clip_centile'])
-                rescale_lo = min(ptile_lo, 0)
-                rescale_hi = max(255, ptile_hi)
-                out_image = rescale(out_image, rescale_lo, rescale_hi, 0, 255)
-                out_image = np.clip(out_image, 0, 255)
-            else:
-                raise Exception(f"Unknown out-of-range option: {oor}")
-
-        # Convert from floats back to unsigned bytes for skimage
-        out_image = np.uint8(out_image)
-        imageio.imwrite(dest_f, out_image, format=ctx.obj['out_format'])
     return on_image_wrapper
 
 
