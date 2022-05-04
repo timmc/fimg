@@ -41,7 +41,11 @@ def rescale(arr, in_low, in_high, out_low, out_high):
 @click.group()
 @click.argument('src', type=click.File(mode='rb'))
 @click.argument('dest', type=click.File(mode='wb', lazy=True))
-@click.option('--out-format', type=click.Choice(['jpg', 'png']), default='png')
+@click.option(
+    '--out-format', type=click.Choice(['jpg', 'png']),
+    # Default to JPG because PNGs of really speckly images can be huge
+    default='jpg',
+)
 @click.option(
     '--out-of-range', '-o',
     type=click.Choice(['mod', 'clip','lin-cent',]), default='mod',
