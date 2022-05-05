@@ -334,22 +334,23 @@ def const_phase(phase, radians):
     return phase * 0 + radians
 
 
-def speckle(arr):
-    # TODO Accept RNG seed in CLI
-    rng = np.random.default_rng()
+def speckle(arr, /, seed):
+    rng = np.random.default_rng(seed=seed)
     return arr * rng.random(arr.shape)
 
 
 @cli.command('speckle-amp')
+@click.option('--seed', type=int)
 @operate_on_amp
-def speckle_amp(amp):
-    return speckle(amp)
+def speckle_amp(amp, /, seed):
+    return speckle(amp, seed=seed)
 
 
 @cli.command('speckle-phase')
+@click.option('--seed', type=int)
 @operate_on_phase
-def speckle_phase(phase):
-    return speckle(phase)
+def speckle_phase(phase, /, seed):
+    return speckle(phase, seed=seed)
 
 
 def filter_first_axis(image, mode, bounds):
