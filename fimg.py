@@ -71,6 +71,15 @@ def rescale(arr, in_low, in_high, out_low, out_high):
           "to be pulled into range."),
     type=float, default='10',
 )
+@click.option(
+    '--rescale-channels',
+    type=click.Choice(['together', 'separately']), default='together',
+    help=(
+        "Global: Whether rescaling due to out-of-range intensities, "
+        "whether to scale all the color components of an image together "
+        "versus on different scales (based on their individual ranges)."
+    ),
+)
 @click.pass_context
 def cli(ctx, **kwargs):
     ctx.obj = kwargs
@@ -101,26 +110,35 @@ def load_image_channels(src_file):
     return src_channels
 
 
-def write_image(image_channels, dest_file, /, out_of_range, clip_centile, out_format):
-    # Put the channel dimension back at the end
-    out_image = image_channels.transpose((1, 2, 0))
+def linear_centile_rescale(data, clip_centile):
+    """
+    Rescale data in an array based on low and high percentiles.
+    """
+    ptile_lo = np.percentile(data, clip_centile)
+    ptile_hi = np.percentile(data, 100 - clip_centile)
+    rescale_lo = min(ptile_lo, 0)
+    rescale_hi = max(255, ptile_hi)
+    data = rescale(data, rescale_lo, rescale_hi, 0, 255)
+    data = np.clip(data, 0, 255)
+    return data
 
-    # TODO: Option to rescale the channels in lockstep, rather
-    # than separately.
-    if np.amin(out_image) < 0 or np.amax(out_image) > 255:
+
+def write_image(channels, dest_file, /, out_of_range, clip_centile, rescale_channels, out_format):
+    if np.amin(channels) < 0 or np.amax(channels) > 255:
         if out_of_range == 'mod':
-            out_image = np.mod(out_image, 255)
+            channels = np.mod(channels, 255)
         elif out_of_range == 'clip':
-            out_image = np.clip(out_image, 0, 255)
+            channels = np.clip(channels, 0, 255)
         elif out_of_range == 'lin-cent':
-            ptile_lo = np.percentile(out_image, clip_centile)
-            ptile_hi = np.percentile(out_image, 100 - clip_centile)
-            rescale_lo = min(ptile_lo, 0)
-            rescale_hi = max(255, ptile_hi)
-            out_image = rescale(out_image, rescale_lo, rescale_hi, 0, 255)
-            out_image = np.clip(out_image, 0, 255)
+            if rescale_channels == 'together':
+                channels = linear_centile_rescale(channels, clip_centile)
+            else:
+                channels = np.array([linear_centile_rescale(ch, clip_centile) for ch in channels])
         else:
             raise Exception(f"Unknown out-of-range option: {out_of_range}")
+
+    # Put the channel dimension back at the end
+    out_image = channels.transpose((1, 2, 0))
 
     # Convert from floats back to unsigned bytes for skimage
     out_image = np.uint8(out_image)
@@ -148,7 +166,7 @@ def operate_on_image(xfunc):
         ])
         write_image(
             out_channels, ctx.obj['dest'],
-            **{k:ctx.obj[k] for k in ['out_of_range', 'clip_centile', 'out_format']}
+            **{k:ctx.obj[k] for k in ['out_of_range', 'clip_centile', 'rescale_channels', 'out_format']}
         )
 
     return on_image_wrapper
