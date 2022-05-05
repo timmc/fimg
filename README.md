@@ -6,6 +6,9 @@ This code is not to be used for scientific analysis or for anything
 else important. I don't actually know what I'm doing and I'm about 80%
 sure that I'm using FFTs wrong here in some fundamental way.
 
+Blog post with sample images and videos:
+https://www.brainonfire.net/blog/2022/04/28/fourier-image-experiments/
+
 ## Usage
 
 Setup:
